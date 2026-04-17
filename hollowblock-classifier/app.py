@@ -5,48 +5,62 @@ from PIL import Image
 import os
 
 # =========================
-# Labels (IMPORTANT)
+# Labels
 # =========================
 labels = ["Grade A", "Grade B", "Grade C"]
 
+grade_to_num = {
+    "A": 2,
+    "B": 1,
+    "C": 0
+}
+
+num_to_grade = {
+    2: "Grade A",
+    1: "Grade B",
+    0: "Grade C"
+}
+
 # =========================
-# Load ONNX model safely
+# Load model
 # =========================
 BASE_DIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(BASE_DIR, "mobilenet_hollowblock.onnx")
-
-if not os.path.exists(MODEL_PATH):
-    st.error(f"Model file not found: {MODEL_PATH}")
-    st.stop()
 
 session = ort.InferenceSession(MODEL_PATH)
 input_name = session.get_inputs()[0].name
 
 # =========================
-# Preprocessing
+# Preprocess
 # =========================
-def preprocess_image(image: Image.Image):
+def preprocess_image(image):
     image = image.convert("RGB")
     image = image.resize((224, 224))
-
-    img_array = np.array(image).astype(np.float32) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)  # (1, 224, 224, 3)
-
-    return img_array
+    img = np.array(image).astype(np.float32) / 255.0
+    return np.expand_dims(img, axis=0)
 
 # =========================
-# Softmax (only if needed)
+# Softmax
 # =========================
 def softmax(x):
-    exp_x = np.exp(x - np.max(x))
-    return exp_x / np.sum(exp_x)
+    x = x - np.max(x)
+    return np.exp(x) / np.sum(np.exp(x))
+
+# =========================
+# Combine logic
+# =========================
+def combine_grades(dl_grade, hw_grade):
+    avg = round((dl_grade + hw_grade) / 2)
+    return num_to_grade[avg]
 
 # =========================
 # UI
 # =========================
-st.title("Hollow Block Classifier (ONNX)")
+st.title("Hybrid Hollow Block Grading System")
 
-uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
+
+hardware_grade = st.selectbox("Select Hardware Grade", ["A", "B", "C"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file)
@@ -54,20 +68,23 @@ if uploaded_file is not None:
 
     input_data = preprocess_image(image)
 
-    # Run inference
     outputs = session.run(None, {input_name: input_data})[0][0]
+    probs = softmax(outputs)
 
-    # Detect if model already outputs probabilities
-    if np.sum(outputs) > 1.5:
-        probs = softmax(outputs)  # logits case
-    else:
-        probs = outputs  # already softmax
+    dl_pred = int(np.argmax(probs))
+    dl_grade = num_to_grade[dl_pred]
 
-    pred_class = int(np.argmax(probs))
+    hw_num = grade_to_num[hardware_grade]
 
-    st.subheader("Prediction")
-    st.success(labels[pred_class])
+    final_grade = combine_grades(dl_pred, hw_num)
+
+    st.subheader("Results")
+
+    st.write("Deep Learning Grade:", dl_grade)
+    st.write("Hardware Grade:", f"Grade {hardware_grade}")
+
+    st.success(f"Final Combined Grade: {final_grade}")
 
     st.subheader("Confidence Scores")
     for i, label in enumerate(labels):
-        st.write(f"{label}: {probs[i] * 100:.2f}%")
+        st.write(f"{label}: {probs[i]*100:.2f}%")
