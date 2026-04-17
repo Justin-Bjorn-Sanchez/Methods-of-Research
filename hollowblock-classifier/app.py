@@ -1,8 +1,9 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-from tensorflow.keras.models import load_model
-from tensorflow.keras.applications.mobilenet import preprocess_input
+import tf_keras as keras
+from tf_keras.models import load_model
+from tf_keras.applications.mobilenet import preprocess_input
 
 st.set_page_config(
     page_title="Hollow Block Grading Classifier",
