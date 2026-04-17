@@ -2,37 +2,50 @@ import streamlit as st
 import onnxruntime as ort
 import numpy as np
 from PIL import Image
+import os
 
-# Load ONNX model
-session = ort.InferenceSession("mobilenet_hollowblock.onnx")
+# =========================
+# Load ONNX model safely
+# =========================
+BASE_DIR = os.path.dirname(__file__)
+MODEL_PATH = os.path.join(BASE_DIR, "mobilenet_hollowblock.onnx")
 
-# Get input/output names
+if not os.path.exists(MODEL_PATH):
+    st.error(f"Model file not found at: {MODEL_PATH}")
+    st.stop()
+
+session = ort.InferenceSession(MODEL_PATH)
 input_name = session.get_inputs()[0].name
-output_name = session.get_outputs()[0].name
 
-st.title("MobileNet ONNX Classifier")
+# =========================
+# Preprocessing function
+# =========================
+def preprocess_image(image: Image.Image):
+    image = image.resize((224, 224))  # MobileNet standard size
+    img_array = np.array(image).astype(np.float32) / 255.0
 
-uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
+    # Ensure 3 channels
+    if img_array.shape[-1] == 4:
+        img_array = img_array[..., :3]
 
-def preprocess(image):
-    image = image.resize((224, 224))  # MobileNet default
-    img = np.array(image).astype(np.float32)
+    img_array = np.expand_dims(img_array, axis=0)
+    return img_array
 
-    # Normalize (adjust if your training used different preprocessing)
-    img = img / 255.0
+# =========================
+# Streamlit UI
+# =========================
+st.title("Hollow Block Classifier (ONNX)")
 
-    # Add batch dimension
-    img = np.expand_dims(img, axis=0)
+uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
-    return img
-
-if uploaded_file:
-    image = Image.open(uploaded_file).convert("RGB")
+if uploaded_file is not None:
+    image = Image.open(uploaded_file)
     st.image(image, caption="Uploaded Image", use_container_width=True)
 
-    input_data = preprocess(image)
+    input_data = preprocess_image(image)
 
     # Run inference
-    outputs = session.run([output_name], {input_name: input_data})
+    outputs = session.run(None, {input_name: input_data})
+    prediction = np.argmax(outputs[0])
 
-    st.write("Raw Output:", outputs[0])
+    st.write("Prediction:", int(prediction))
