@@ -5,34 +5,44 @@ from PIL import Image
 import os
 
 # =========================
+# Labels (IMPORTANT)
+# =========================
+labels = ["Grade A", "Grade B", "Grade C"]
+
+# =========================
 # Load ONNX model safely
 # =========================
 BASE_DIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(BASE_DIR, "mobilenet_hollowblock.onnx")
 
 if not os.path.exists(MODEL_PATH):
-    st.error(f"Model file not found at: {MODEL_PATH}")
+    st.error(f"Model file not found: {MODEL_PATH}")
     st.stop()
 
 session = ort.InferenceSession(MODEL_PATH)
 input_name = session.get_inputs()[0].name
 
 # =========================
-# Preprocessing function
+# Preprocessing
 # =========================
 def preprocess_image(image: Image.Image):
-    image = image.resize((224, 224))  # MobileNet standard size
+    image = image.convert("RGB")
+    image = image.resize((224, 224))
+
     img_array = np.array(image).astype(np.float32) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)  # (1, 224, 224, 3)
 
-    # Ensure 3 channels
-    if img_array.shape[-1] == 4:
-        img_array = img_array[..., :3]
-
-    img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
 # =========================
-# Streamlit UI
+# Softmax (only if needed)
+# =========================
+def softmax(x):
+    exp_x = np.exp(x - np.max(x))
+    return exp_x / np.sum(exp_x)
+
+# =========================
+# UI
 # =========================
 st.title("Hollow Block Classifier (ONNX)")
 
@@ -45,7 +55,19 @@ if uploaded_file is not None:
     input_data = preprocess_image(image)
 
     # Run inference
-    outputs = session.run(None, {input_name: input_data})
-    prediction = np.argmax(outputs[0])
+    outputs = session.run(None, {input_name: input_data})[0][0]
 
-    st.write("Prediction:", int(prediction))
+    # Detect if model already outputs probabilities
+    if np.sum(outputs) > 1.5:
+        probs = softmax(outputs)  # logits case
+    else:
+        probs = outputs  # already softmax
+
+    pred_class = int(np.argmax(probs))
+
+    st.subheader("Prediction")
+    st.success(labels[pred_class])
+
+    st.subheader("Confidence Scores")
+    for i, label in enumerate(labels):
+        st.write(f"{label}: {probs[i] * 100:.2f}%")
