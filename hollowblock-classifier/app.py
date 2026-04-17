@@ -22,16 +22,20 @@ num_to_grade = {
 }
 
 # =========================
-# Load model
+# Load ONNX model
 # =========================
 BASE_DIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(BASE_DIR, "mobilenet_hollowblock.onnx")
+
+if not os.path.exists(MODEL_PATH):
+    st.error(f"Model file not found: {MODEL_PATH}")
+    st.stop()
 
 session = ort.InferenceSession(MODEL_PATH)
 input_name = session.get_inputs()[0].name
 
 # =========================
-# Preprocess
+# Preprocessing
 # =========================
 def preprocess_image(image):
     image = image.convert("RGB")
@@ -47,11 +51,12 @@ def softmax(x):
     return np.exp(x) / np.sum(np.exp(x))
 
 # =========================
-# Combine logic
+# Combine grades (FIXED LOGIC)
 # =========================
 def combine_grades(dl_grade, hw_grade):
-    avg = round((dl_grade + hw_grade) / 2)
-    return num_to_grade[avg]
+    # Always choose the lower grade (C worst, A best)
+    final_num = min(dl_grade, hw_grade)
+    return num_to_grade[final_num]
 
 # =========================
 # UI
@@ -68,6 +73,7 @@ if uploaded_file is not None:
 
     input_data = preprocess_image(image)
 
+    # ONNX inference
     outputs = session.run(None, {input_name: input_data})[0][0]
     probs = softmax(outputs)
 
@@ -78,6 +84,9 @@ if uploaded_file is not None:
 
     final_grade = combine_grades(dl_pred, hw_num)
 
+    # =========================
+    # Results
+    # =========================
     st.subheader("Results")
 
     st.write("Deep Learning Grade:", dl_grade)
@@ -87,4 +96,4 @@ if uploaded_file is not None:
 
     st.subheader("Confidence Scores")
     for i, label in enumerate(labels):
-        st.write(f"{label}: {probs[i]*100:.2f}%")
+        st.write(f"{label}: {probs[i] * 100:.2f}%")
