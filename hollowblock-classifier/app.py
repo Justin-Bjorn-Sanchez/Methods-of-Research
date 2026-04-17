@@ -1,9 +1,15 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import tf_keras
-from tf_keras.models import load_model
-from tf_keras.applications.mobilenet import preprocess_input
+import os
+
+# force Keras backend
+os.environ["KERAS_BACKEND"] = "jax"
+
+import keras
+from keras.applications.mobilenet import preprocess_input
+
+model = keras.models.load_model("mobilenet_hollowblock.keras")
 
 st.set_page_config(
     page_title="Hollow Block Grading Classifier",
