@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import tf_keras as keras
+import tf_keras
 from tf_keras.models import load_model
 from tf_keras.applications.mobilenet import preprocess_input
 
