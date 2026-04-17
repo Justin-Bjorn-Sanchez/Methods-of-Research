@@ -17,7 +17,7 @@ class_names = ["Grade A", "Grade B", "Reject"]
 
 st.set_page_config(page_title="Hollow Block Classifier", layout="centered")
 
-st.title("🧱 Hollow Block Grading Classifier")
+st.title(" Hollow Block Grading Classifier")
 st.write("Upload an image or take a photo to classify the hollow block.")
 
 # Upload OR Camera
@@ -57,6 +57,6 @@ if image is not None:
 
     # Pass/fail logic
     if predicted_class.lower() == "reject":
-        st.error("❌ Block failed quality check")
+        st.error(" Block failed quality check")
     else:
-        st.success("✅ Block passed quality check")
+        st.success(" Block passed quality check")
