@@ -39,7 +39,7 @@ def softmax(x):
     return np.exp(x) / np.sum(np.exp(x))
 
 # =========================
-# FIXED RULE SYSTEM (NO NUMBERS)
+# FINAL COMBINE RULE
 # =========================
 def combine_grades(dl, hw):
     if dl == "A" and hw == "A":
@@ -53,6 +53,21 @@ def combine_grades(dl, hw):
             return "B"
         return "B"
     return "C"
+
+# =========================
+# COMMENT SYSTEM
+# =========================
+dl_comments = {
+    "A": "Visually Great!",
+    "B": "Visually Okay",
+    "C": "Not Okay"
+}
+
+hw_comments = {
+    "A": "High Density",
+    "B": "Average Density",
+    "C": "Low Density"
+}
 
 # =========================
 # UI
@@ -82,7 +97,10 @@ if uploaded_file is not None:
     st.subheader("Results")
 
     st.write("Deep Learning Grade:", dl_grade)
+    st.caption(dl_comments[dl_grade])
+
     st.write("Hardware Grade:", hardware_grade)
+    st.caption(hw_comments[hardware_grade])
 
     st.success(f"Final Combined Grade: {final_grade}")
 
